@@ -23,6 +23,7 @@ class Client {
 
   String _endpoint;
   String _apiToken;
+  String _userToken;
   InMemoryCache _cache;
 
   http.Client client;
@@ -36,6 +37,10 @@ class Client {
     _apiToken = value;
   }
 
+  set userToken(String value) {
+    _userToken = value;
+  }
+
   set cache(InMemoryCache cache) {
     _cache = cache;
   }
@@ -45,18 +50,26 @@ class Client {
 
   String get apiToken => this._apiToken;
 
+  String get userToken => this._userToken;
+
   Map<String, String> get headers => {
-        'Authorization': 'Bearer $apiToken',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': '$apiToken',
+    'Content-Type': 'application/json',
+  };
+
+  Map<String, String> get hasBrainHeaders => {
+    'authorization': '$apiToken',
+    'usertoken': '$userToken',
+    'Content-Type': 'application/json',
+  };
 
   InMemoryCache get cache => this._cache;
 
   // Methods
   String _encodeBody(
-    String query, {
-    Map<String, dynamic> variables,
-  }) {
+      String query, {
+        Map<String, dynamic> variables,
+      }) {
     return json.encode({
       'query': query,
       'variables': variables,
@@ -73,7 +86,7 @@ class Client {
       );
     }
 
-    final Map<String, dynamic> jsonResponse = json.decode(response.body);
+    final Map<String, dynamic> jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
 
     if (jsonResponse['errors'] != null && jsonResponse['errors'].length > 0) {
       throw GQLException(
@@ -89,6 +102,7 @@ class Client {
   Future<Map<String, dynamic>> query({
     String query,
     Map<String, dynamic> variables,
+    bool usingUserToken
   }) async {
     final String body = _encodeBody(
       query,
@@ -98,7 +112,7 @@ class Client {
     try {
       final http.Response res = await client.post(
         endPoint,
-        headers: headers,
+        headers: usingUserToken != null && usingUserToken ? hasBrainHeaders : headers,
         body: body,
       );
 
